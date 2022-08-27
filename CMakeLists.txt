@@ -1,16 +1,17 @@
 cmake_minimum_required(VERSION 3.20)
-project(Simple_WebRtc_Cpp_Linux)
+project(WebRtc_Cpp_Linux)
 
 set(CMAKE_CXX_STANDARD 14)
 
+set(CMAKE_CROSSCOMPILING TRUE)
+
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 include_directories(
-
         #################################################################
         #                   >      Project Files
         "src"
         "picojson"
-
         #################################################################
         #                   >    WebRtc Project Files
 
@@ -26,6 +27,7 @@ include_directories(
         "$ENV{HOME}/webrtc_linux/src/media/base"
         "$ENV{HOME}/webrtc_linux/src/media/engine"
         "$ENV{HOME}/webrtc_linux/src/pc"
+        "$ENV{HOME}/Downloads/curl-7.84.0/include"
 
         #################################################################
         #                   >    External Modules
@@ -64,19 +66,45 @@ add_definitions(
         -DWEBRTC_NON_STATIC_TRACE_EVENT_HANDLERS=0
         -DABSL_ALLOCATOR_NOTHROW=1
         -DHAVE_SCTP
+        -DWEBRTC_USE_BUILTIN_OPUS=1
 )
 
-add_executable(Simple_WebRtc_Cpp_Linux
-
+add_executable(WebRtc_Cpp_Linux
         main.cpp
-        webrtc/rtc_connection.h
+        src/rtc_connection.h
+        src/rtc_wrapper.h
+        src/rtc_ice.h
+        src/http.h
+        src/file_process.h
+        /home/lyx/webrtc_linux/src/test/vcm_capturer.cc
+        /home/lyx/webrtc_linux/src/test/test_video_capturer.cc
+        /home/lyx/webrtc_linux/src/media/base/video_adapter.cc
+        src/file_process.h)
 
-        webrtc/rtc_wrapper.h webrtc/rtc_ice.h)
+# openssl
+find_package(OpenSSL REQUIRED)
+if(OPENSSL_FOUND)
+    include_directories(${OPENSSL_INCLUDE_DIRS})
+    message(STATUS "OpenSSL Found!")
+endif()
 
-target_link_libraries(Simple_WebRtc_Cpp_Linux
+# curl
+find_package(CURL REQUIRED)
 
-        PUBLIC "$ENV{HOME}/webrtc_linux/src/out/Debug/obj/libwebrtc.a"
+if(CURL_FOUND)
+    include_directories(${CURL_INCLUDE_DIR})
+    message(STATUS "Curl Found: ${CURL_VERSION_STRING} ${CURL_LIBRARIES} ${CURL_LINK_LIBRARIES}!")
+else(CURL_FOUND)
+    message(FATAL_ERROR "Could not find the CURL library and development files.")
+endif()
+
+
+target_link_libraries(WebRtc_Cpp_Linux PUBLIC ${CURL_LIBRARIES})
+target_link_libraries(WebRtc_Cpp_Linux PUBLIC OpenSSL::Crypto OpenSSL::SSL)
+target_link_libraries(WebRtc_Cpp_Linux
+
+        PUBLIC "$ENV{HOME}/webrtc_linux/libwebrtc.a"
         -lpthread
         -lboost_system
         -ldl
-)
+        )

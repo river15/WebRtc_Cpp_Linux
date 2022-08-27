@@ -6,6 +6,9 @@
 #define SIMPLE_WEBRTC_CPP_LINUX_RTC_CONNECTION_H
 
 #include "rtc_ice.h"
+#include "json.hpp"
+#include "http.h"
+#include "file_process.h"
 
 class Connection {
 public:
@@ -32,10 +35,62 @@ public:
     // the other party.
     void on_success_csd(webrtc::SessionDescriptionInterface *desc) {
         peer_connection->SetLocalDescription(ssdo, desc);
+        std::cout << "on_success_csd coming " << std::endl;
+        //SRS 4.0 only support h.264 in sdp
+        std::string sdpOffer;
+        desc->ToString(&sdpOffer);
 
-        std::string sdp;
-        desc->ToString(&sdp);
-        on_sdp(sdp);
+        std::string srs_api = lyx::config["srs_push_addr"]; // http://121.37.25.119:1985/rtc/v1/publish?numberOfSimulcastLayers=spec3
+        std::string srs_streamurl = lyx::config["srs_webrtc_streamurl"]; // webrtc://121.37.25.119/live/kliveStream?numberOfSimulcastLayers=spec3
+
+        std::cout << "sdp offer : " <<  sdpOffer << std::endl;
+
+        //send offer sdp to srs4.0
+        //json使用nlohmann::json
+        nlohmann::json reqMsg = {
+                {"api", srs_api},
+//                {"tid", "wsy-R"},
+//                {"clientip", "null"},
+                {"streamurl",  srs_streamurl},
+                {"sdp", sdpOffer}
+        };
+
+        std::string url = srs_api;
+        std::string response;
+        std::string httpRequestBody = reqMsg.dump();
+        std::cout << "httpRequestBody: " << httpRequestBody << std::endl;
+
+
+        int http_request_state = httpClient.post(url, nullptr,httpRequestBody, &response);
+        std::cout << "http_request_state : " <<  http_request_state << std::endl;
+        if (http_request_state == 0){
+            std::cout << "http response : " <<  response << std::endl;
+            nlohmann::json jsonContent = nlohmann::json::parse(response);
+
+
+            int srs_response_code;
+            std::string sdp;
+            sdp = jsonContent["sdp"];
+            std::cout << "sdp answer : " <<  sdp << std::endl;
+            srs_response_code = (int)jsonContent["code"];
+            if (srs_response_code == 0){
+                webrtc::SdpParseError error;
+                webrtc::SdpType type = webrtc::SdpType::kAnswer;
+
+                std::unique_ptr<webrtc::SessionDescriptionInterface> session_description =
+                        webrtc::CreateSessionDescription(type, sdp, &error);
+
+                peer_connection->SetRemoteDescription(
+                        DummySetSessionDescriptionObserver::Create(),
+                        session_description.release());
+            }else{
+                std::cout << "SRS response has problem,sdp is " <<  sdp << std::endl;
+            }
+
+        }else{
+            std::cout << "Request SRS failed,httpState is " <<  http_request_state << std::endl;
+        }
+
     }
 
     // Convert the got ICE.
@@ -174,10 +229,27 @@ public:
         };
     };
 
+    class DummySetSessionDescriptionObserver
+            : public webrtc::SetSessionDescriptionObserver {
+    public:
+        static DummySetSessionDescriptionObserver* Create() {
+            return new  rtc::RefCountedObject<DummySetSessionDescriptionObserver>();
+        }
+        virtual void OnSuccess() {
+            std::cout << "##########OnSuccess";
+            RTC_LOG(INFO) << __FUNCTION__;
+        }
+        virtual void OnFailure(webrtc::RTCError error) {
+            std::cout << "##########OnFailure";
+            RTC_LOG(INFO) << __FUNCTION__ << " " << ToString(error.type()) << ":  " << error.message();
+        }
+    };
+
     PCO pco;
     DCO dco;
     rtc::scoped_refptr<CSDO> csdo;
     rtc::scoped_refptr<SSDO> ssdo;
+    lyx::HttpClient httpClient;
 
     Connection(const std::string &name_) :
             name(name_),

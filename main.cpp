@@ -1,11 +1,10 @@
-
-#include <condition_variable>
 #include <iostream>
 #include <list>
-#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <fstream>
+
 
 // Header files related with WebRTC.
 #include <api/create_peerconnection_factory.h>
@@ -18,16 +17,40 @@
 
 #include "picojson/picojson.h"
 
+#include "src/file_process.h"
+
+
+ void init_config(int argc, char *argv[]) {
+    if (argc == 1) {
+        std::cerr << "no check arguments;" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    std::ifstream fin;
+    std::string buf;
+    fin.open(argv[1]);
+    if (fin.is_open()) {
+        while (getline(fin, buf)) {
+            size_t pos = buf.find('=');
+
+            std::string _key = buf.substr(0, pos);
+            std::string _value = buf.substr(pos + 1, buf.size());
+            std::cout << _key << " : " << _value << std::endl;
+
+            lyx::config.insert(std::pair<std::string, std::string>(_key, _value));
+        }
+    } else {
+        std::cout << "config file open fail!";
+    }
+     fin.close();
+}
 
 int main(int argc, char *argv[]) {
 
-    std::cout << "*** Welcome to WebRtc Debugging Development Environment ***" << std::endl;
+    std::cout << "*** Welcome to SRS push client ***" << std::endl;
     std::cout << "    > Please follow these commands to use this program < " << std::endl;
-    std::cout << "    1. sdp1 -> To Generate SDPs for Peer-A " << std::endl;
-    std::cout << "    2. sdp2 -> To Generate SDPs for Peer-B " << std::endl;
-    std::cout << "    3. ice1 -> To Generate Ice Candidates for Peer-A " << std::endl;
-    std::cout << "    4. ice2 -> To Generate Ice Candidates for Peer-B " << std::endl;
-    std::cout << "    5. ;    -> To terminate RTC Thread Session. " << std::endl;
+    std::cout << "    1. start -> To push webrtc SDPs to SRS " << std::endl;
+
     
 
     webrtc::field_trial::InitFieldTrialsFromString("");
@@ -55,8 +78,10 @@ int main(int argc, char *argv[]) {
             if (line == "") {
                 continue;
 
-            } else if (line == "sdp1") {
+            } else if (line == "start") {
                 sdp_type = "Offer";
+                // init config file
+                init_config(argc, argv);
                 webrtc.create_offer_sdp();
                 std::cout << "> ";
 

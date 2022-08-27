@@ -1,4 +1,6 @@
-/opt/clion-2021.2.3/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_DEPENDS_USE_COMPILER=FALSE -G "CodeBlocks - Unix Makefiles" /home/webrtc/CLionProjects/Simple-WebRtc-Cpp-Linux
+/home/lyx/Downloads/clion-2022.1.3/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/home/lyx/Downloads/clion-2022.1.3/bin/ninja/linux/ninja -G Ninja -S /home/lyx/CLionProjects/webrtc-cpp-linux -B /home/lyx/CLionProjects/webrtc-cpp-linux/cmake-build-debug
+-- OpenSSL Found!
+-- Curl Found: 7.58.0 /usr/lib/x86_64-linux-gnu/libcurl.so !
 -- Configuring done
 -- Generating done
--- Build files have been written to: /home/webrtc/CLionProjects/Simple-WebRtc-Cpp-Linux/cmake-build-debug
+-- Build files have been written to: /home/lyx/CLionProjects/webrtc-cpp-linux/cmake-build-debug
